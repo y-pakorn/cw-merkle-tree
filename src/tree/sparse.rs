@@ -55,7 +55,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
 
         for i in 1..level as usize {
             let latest = &hashes[i - 1];
-            hashes[i] = hasher.hash_two(&latest, &latest)?;
+            hashes.push(hasher.hash_two(&latest, &latest)?);
         }
 
         self.hashes.save(storage, &hashes)?;
