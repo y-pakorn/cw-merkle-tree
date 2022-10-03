@@ -18,6 +18,25 @@ pub struct SparseMerkleTreeWithHistory<
     pub root_history: Map<'a, &'a L, Empty>,
 }
 
+impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq>
+    SparseMerkleTreeWithHistory<'a, L>
+where
+    for<'r> &'r L: PrimaryKey<'r>,
+{
+    pub const fn new(
+        hashes_ns: &'a str,
+        leafs_ns: &'a str,
+        level_ns: &'a str,
+        zeros_ns: &'a str,
+        root_history_ns: &'a str,
+    ) -> Self {
+        Self {
+            tree: SparseMerkleTree::new(hashes_ns, leafs_ns, level_ns, zeros_ns),
+            root_history: Map::new(root_history_ns),
+        }
+    }
+}
+
 impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>> MerkleTree<L, H>
     for SparseMerkleTreeWithHistory<'a, L>
 where
