@@ -61,7 +61,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
 
         for i in 1..level as usize {
             let latest = &hashes[i - 1];
-            hashes.push(hasher.hash_two(&latest, &latest)?);
+            hashes.push(hasher.hash_two(latest, latest)?);
         }
 
         self.hashes.save(storage, &hashes)?;
@@ -110,7 +110,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
                 false => (&hashes[i], &cur_hash),
             };
 
-            cur_hash = hasher.hash_two(&left, &right)?;
+            cur_hash = hasher.hash_two(left, right)?;
             cur_idx /= 2;
         }
 
