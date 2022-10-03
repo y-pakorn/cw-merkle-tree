@@ -6,15 +6,22 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{Hasher, MerkleTree, MerkleTreeError};
 
-pub struct SparseMerkleTree<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq> {
-    _p: PhantomData<L>,
+pub struct SparseMerkleTree<
+    'a,
+    L: Serialize + DeserializeOwned + Clone + Debug + PartialEq,
+    H: Hasher<L>,
+> {
+    _l: PhantomData<L>,
+    _h: PhantomData<H>,
     pub hashes: Item<'a, Vec<L>>,
     pub leafs: Map<'a, u64, L>,
     pub level: Item<'a, u8>,
     pub zeros: Item<'a, Vec<L>>,
 }
 
-impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq> SparseMerkleTree<'a, L> {
+impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>>
+    SparseMerkleTree<'a, L, H>
+{
     pub const fn new(
         hashes_ns: &'a str,
         leafs_ns: &'a str,
@@ -22,7 +29,8 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq> SparseMerk
         zeros_ns: &'a str,
     ) -> Self {
         Self {
-            _p: PhantomData,
+            _l: PhantomData,
+            _h: PhantomData,
             hashes: Item::new(hashes_ns),
             leafs: Map::new(leafs_ns),
             level: Item::new(level_ns),
@@ -32,7 +40,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq> SparseMerk
 }
 
 impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>> MerkleTree<L, H>
-    for SparseMerkleTree<'a, L>
+    for SparseMerkleTree<'a, L, H>
 {
     fn init(
         &self,

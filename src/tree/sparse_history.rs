@@ -11,15 +11,16 @@ use super::SparseMerkleTree;
 pub struct SparseMerkleTreeWithHistory<
     'a,
     L: Serialize + DeserializeOwned + Clone + Debug + PartialEq,
+    H: Hasher<L>,
 > where
     for<'r> &'r L: PrimaryKey<'r>,
 {
-    pub tree: SparseMerkleTree<'a, L>,
+    pub tree: SparseMerkleTree<'a, L, H>,
     pub root_history: Map<'a, &'a L, Empty>,
 }
 
-impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq>
-    SparseMerkleTreeWithHistory<'a, L>
+impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>>
+    SparseMerkleTreeWithHistory<'a, L, H>
 where
     for<'r> &'r L: PrimaryKey<'r>,
 {
@@ -38,7 +39,7 @@ where
 }
 
 impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>> MerkleTree<L, H>
-    for SparseMerkleTreeWithHistory<'a, L>
+    for SparseMerkleTreeWithHistory<'a, L, H>
 where
     for<'r> &'r L: PrimaryKey<'r>,
 {
@@ -77,6 +78,6 @@ where
         &self,
         storage: &dyn cosmwasm_std::Storage,
     ) -> Result<L, crate::MerkleTreeError> {
-        MerkleTree::<_, H>::get_latest_root(&self.tree, storage)
+        self.tree.get_latest_root(storage)
     }
 }
