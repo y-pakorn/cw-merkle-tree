@@ -11,7 +11,7 @@ pub trait Hasher<T>: Clone + Debug {
 
 pub trait MerkleTree<L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>> {
     fn init(
-        &mut self,
+        &self,
         storage: &mut dyn Storage,
         level: u8,
         default_leaf: L,
@@ -21,7 +21,7 @@ pub trait MerkleTree<L: Serialize + DeserializeOwned + Clone + Debug + PartialEq
     fn is_valid_root(&self, storage: &dyn Storage, root: &L) -> Result<bool, MerkleTreeError>;
 
     fn insert(
-        &mut self,
+        &self,
         storage: &mut dyn Storage,
         leaf: L,
         hasher: &H,

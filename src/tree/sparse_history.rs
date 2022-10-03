@@ -43,7 +43,7 @@ where
     for<'r> &'r L: PrimaryKey<'r>,
 {
     fn init(
-        &mut self,
+        &self,
         storage: &mut dyn cosmwasm_std::Storage,
         level: u8,
         default_leaf: L,
@@ -61,7 +61,7 @@ where
     }
 
     fn insert(
-        &mut self,
+        &self,
         storage: &mut dyn cosmwasm_std::Storage,
         leaf: L,
         hasher: &H,

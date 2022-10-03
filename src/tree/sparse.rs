@@ -35,7 +35,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
     for SparseMerkleTree<'a, L>
 {
     fn init(
-        &mut self,
+        &self,
         storage: &mut dyn Storage,
         level: u8,
         default_leaf: L,
@@ -61,7 +61,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
     }
 
     fn insert(
-        &mut self,
+        &self,
         storage: &mut dyn Storage,
         leaf: L,
         hasher: &H,
