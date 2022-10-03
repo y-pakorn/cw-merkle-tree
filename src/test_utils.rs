@@ -8,6 +8,15 @@ use crate::{Hasher, HasherError};
 #[derive(Clone, Copy, Debug)]
 pub struct Blake2;
 
+impl Hasher<Vec<u8>> for Blake2 {
+    fn hash_two(&self, left: &Vec<u8>, right: &Vec<u8>) -> Result<Vec<u8>, HasherError> {
+        let mut hasher = Blake2b512::new();
+        hasher.update(left);
+        hasher.update(right);
+        Ok(hasher.finalize()[0..32].to_vec())
+    }
+}
+
 impl Hasher<Uint256> for Blake2 {
     fn hash_two(&self, left: &Uint256, right: &Uint256) -> Result<Uint256, HasherError> {
         let mut hasher = Blake2b512::new();

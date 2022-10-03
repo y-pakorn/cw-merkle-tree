@@ -10,19 +10,18 @@ use super::SparseMerkleTree;
 
 pub struct SparseMerkleTreeWithHistory<
     'a,
-    L: Serialize + DeserializeOwned + Clone + Debug + PartialEq,
+    L: Serialize + DeserializeOwned + Clone + Debug + PartialEq + PrimaryKey<'a>,
     H: Hasher<L>,
-> where
-    for<'r> &'r L: PrimaryKey<'r>,
-{
+> {
     pub tree: SparseMerkleTree<'a, L, H>,
-    pub root_history: Map<'a, &'a L, Empty>,
+    pub root_history: Map<'a, L, Empty>,
 }
 
-impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>>
-    SparseMerkleTreeWithHistory<'a, L, H>
-where
-    for<'r> &'r L: PrimaryKey<'r>,
+impl<
+        'a,
+        L: Serialize + DeserializeOwned + Clone + Debug + PartialEq + PrimaryKey<'a>,
+        H: Hasher<L>,
+    > SparseMerkleTreeWithHistory<'a, L, H>
 {
     pub const fn new(
         hashes_ns: &'a str,
@@ -38,10 +37,11 @@ where
     }
 }
 
-impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>> MerkleTree<L, H>
-    for SparseMerkleTreeWithHistory<'a, L, H>
-where
-    for<'r> &'r L: PrimaryKey<'r>,
+impl<
+        'a,
+        L: Serialize + DeserializeOwned + Clone + Debug + PartialEq + PrimaryKey<'a>,
+        H: Hasher<L>,
+    > MerkleTree<L, H> for SparseMerkleTreeWithHistory<'a, L, H>
 {
     fn init(
         &self,
@@ -58,7 +58,7 @@ where
         storage: &dyn cosmwasm_std::Storage,
         root: &L,
     ) -> Result<bool, crate::MerkleTreeError> {
-        Ok(self.root_history.has(storage, root))
+        Ok(self.root_history.has(storage, root.clone()))
     }
 
     fn insert(
@@ -69,7 +69,8 @@ where
     ) -> Result<(u64, L), crate::MerkleTreeError> {
         let (index, latest_root) = self.tree.insert(storage, leaf, hasher)?;
 
-        self.root_history.save(storage, &latest_root, &Empty {})?;
+        self.root_history
+            .save(storage, latest_root.clone(), &Empty {})?;
 
         Ok((index, latest_root))
     }
@@ -79,5 +80,114 @@ where
         storage: &dyn cosmwasm_std::Storage,
     ) -> Result<L, crate::MerkleTreeError> {
         self.tree.get_latest_root(storage)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+
+    use cosmwasm_std::{testing::MockStorage, Uint256};
+
+    use crate::{test_utils::Blake2, Hasher, MerkleTree};
+
+    use super::SparseMerkleTreeWithHistory;
+
+    const TREE: SparseMerkleTreeWithHistory<Vec<u8>, Blake2> =
+        SparseMerkleTreeWithHistory::new("hashes", "leafs", "level", "zeros", "root_history");
+    const ZERO: [u8; 32] = [
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ];
+
+    #[test]
+    fn init() -> Result<(), Box<dyn Error>> {
+        let mut storage = MockStorage::new();
+        let zero_vec = ZERO.to_vec();
+
+        TREE.init(
+            &mut storage,
+            20,
+            Blake2.hash_two(&zero_vec, &zero_vec)?,
+            &Blake2,
+        )?;
+
+        assert_eq!(
+            TREE.get_latest_root(&storage)?,
+            [
+                20, 114, 250, 18, 41, 94, 49, 107, 184, 78, 231, 47, 187, 225, 122, 14, 76, 178,
+                156, 226, 121, 99, 103, 48, 22, 79, 157, 174, 92, 246, 92, 50
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn insert() -> Result<(), Box<dyn Error>> {
+        let mut storage = MockStorage::new();
+        let zero_vec = ZERO.to_vec();
+        let one_vec = Uint256::one().to_be_bytes().to_vec();
+
+        TREE.init(
+            &mut storage,
+            20,
+            Blake2.hash_two(&zero_vec, &zero_vec)?,
+            &Blake2,
+        )?;
+
+        let leaf = Blake2.hash_two(&one_vec, &one_vec)?;
+
+        let (index, new_root) = TREE.insert(&mut storage, leaf.clone(), &Blake2)?;
+
+        assert_eq!(index, 0);
+        assert_eq!(
+            new_root,
+            [
+                45, 48, 180, 75, 130, 217, 36, 211, 56, 209, 169, 100, 90, 90, 130, 183, 22, 180,
+                158, 1, 50, 4, 40, 127, 94, 211, 229, 143, 202, 226, 138, 132
+            ]
+        );
+        assert_eq!(new_root, TREE.get_latest_root(&storage)?);
+        assert!(TREE.is_valid_root(&storage, &new_root)?);
+
+        let (index, new_root) = TREE.insert(&mut storage, leaf, &Blake2)?;
+
+        assert_eq!(index, 1);
+        assert_eq!(
+            new_root,
+            [
+                38, 223, 223, 196, 242, 242, 23, 6, 14, 235, 4, 249, 197, 168, 160, 77, 102, 150,
+                4, 52, 233, 58, 198, 244, 107, 32, 147, 134, 58, 154, 177, 116
+            ]
+        );
+        assert_eq!(new_root, TREE.get_latest_root(&storage)?);
+        assert!(TREE.is_valid_root(&storage, &new_root)?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn root_history() -> Result<(), Box<dyn Error>> {
+        let mut storage = MockStorage::new();
+        let zero_vec = ZERO.to_vec();
+        let one_vec = Uint256::one().to_be_bytes().to_vec();
+
+        TREE.init(
+            &mut storage,
+            20,
+            Blake2.hash_two(&zero_vec, &zero_vec)?,
+            &Blake2,
+        )?;
+
+        let leaf = Blake2.hash_two(&one_vec, &one_vec)?;
+
+        let (_, old_root) = TREE.insert(&mut storage, leaf.clone(), &Blake2)?;
+        let (_, new_root) = TREE.insert(&mut storage, leaf, &Blake2)?;
+
+        assert!(TREE.is_valid_root(&storage, &old_root)?);
+        assert!(TREE.is_valid_root(&storage, &new_root)?);
+
+        Ok(())
     }
 }
