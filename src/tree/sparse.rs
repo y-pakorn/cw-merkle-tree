@@ -117,3 +117,78 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
         Ok(self.hashes.load(storage)?.into_iter().next_back().unwrap())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{error::Error, str::FromStr};
+
+    use cosmwasm_std::{testing::MockStorage, Uint256};
+
+    use crate::{test_utils::Blake2, Hasher, MerkleTree};
+
+    use super::SparseMerkleTree;
+
+    const TREE: SparseMerkleTree<Uint256, Blake2> =
+        SparseMerkleTree::new("hashes", "leafs", "level", "zeros");
+
+    #[test]
+    fn init() -> Result<(), Box<dyn Error>> {
+        let mut storage = MockStorage::new();
+
+        TREE.init(
+            &mut storage,
+            20,
+            Blake2.hash_two(&Uint256::zero(), &Uint256::zero())?,
+            &Blake2,
+        )?;
+
+        assert_eq!(
+            TREE.get_latest_root(&storage)?,
+            Uint256::from_str(
+                "9249403463272353962338525770558810268347485650856754165003644360089862036530"
+            )?
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn insert() -> Result<(), Box<dyn Error>> {
+        let mut storage = MockStorage::new();
+
+        TREE.init(
+            &mut storage,
+            20,
+            Blake2.hash_two(&Uint256::zero(), &Uint256::zero())?,
+            &Blake2,
+        )?;
+
+        let leaf = Blake2.hash_two(&Uint256::one(), &Uint256::one())?;
+
+        let (index, new_root) = TREE.insert(&mut storage, leaf, &Blake2)?;
+
+        assert_eq!(index, 0);
+        assert_eq!(
+            new_root,
+            Uint256::from_str(
+                "20440131195474697977177675138122460070080428738123630012135291638286263683716"
+            )?
+        );
+        assert_eq!(new_root, TREE.get_latest_root(&storage)?);
+        assert!(TREE.is_valid_root(&storage, &new_root)?);
+
+        let (index, new_root) = TREE.insert(&mut storage, leaf, &Blake2)?;
+
+        assert_eq!(index, 1);
+        assert_eq!(
+            new_root,
+            Uint256::from_str(
+                "17583439540779748128045581041758430207126949480967999715753965799367859941748"
+            )?
+        );
+        assert_eq!(new_root, TREE.get_latest_root(&storage)?);
+        assert!(TREE.is_valid_root(&storage, &new_root)?);
+
+        Ok(())
+    }
+}
