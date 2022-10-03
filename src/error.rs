@@ -11,6 +11,9 @@ pub enum MerkleTreeError {
 
     #[error("Total leaf exceed maximum leaf")]
     ExceedMaxLeaf,
+
+    #[error("The tree is already initialized")]
+    AlreadyInit,
 }
 
 #[derive(Debug, Error)]

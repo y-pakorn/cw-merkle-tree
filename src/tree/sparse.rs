@@ -49,6 +49,12 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
         default_leaf: L,
         hasher: &H,
     ) -> Result<(), MerkleTreeError> {
+        self.level
+            .may_load(storage)?
+            .is_none()
+            .then_some(())
+            .ok_or(MerkleTreeError::AlreadyInit)?;
+
         self.level.save(storage, &level)?;
 
         let mut hashes = vec![default_leaf];
