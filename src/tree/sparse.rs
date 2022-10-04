@@ -197,4 +197,26 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn root_history() -> Result<(), Box<dyn Error>> {
+        let mut storage = MockStorage::new();
+
+        TREE.init(
+            &mut storage,
+            20,
+            Blake2.hash_two(&Uint256::zero(), &Uint256::zero())?,
+            &Blake2,
+        )?;
+
+        let leaf = Blake2.hash_two(&Uint256::from_u128(5), &Uint256::from_u128(5))?;
+
+        let (_, old_root) = TREE.insert(&mut storage, leaf, &Blake2)?;
+        let (_, new_root) = TREE.insert(&mut storage, leaf, &Blake2)?;
+
+        assert!(!TREE.is_valid_root(&storage, &old_root)?);
+        assert!(TREE.is_valid_root(&storage, &new_root)?);
+
+        Ok(())
+    }
 }
