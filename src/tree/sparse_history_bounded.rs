@@ -14,7 +14,7 @@ pub struct SparseMerkleTreeWithHistoryBounded<
     H: Hasher<L>,
     const HISTORY_LEVEL: u32,
 > {
-    pub history_index: Item<'a, (u32, u32)>,
+    pub history_index: Item<'a, u32>,
     pub root_history: Map<'a, L, Empty>,
     pub root_index: Map<'a, u32, L>,
     pub tree: SparseMerkleTree<'a, L, H>,
@@ -59,7 +59,6 @@ impl<
         default_leaf: L,
         hasher: &H,
     ) -> Result<(), crate::MerkleTreeError> {
-        self.history_index.save(storage, &(HISTORY_LEVEL, 0))?;
         self.tree.init(storage, level, default_leaf, hasher)
     }
 
@@ -78,8 +77,8 @@ impl<
         hasher: &H,
     ) -> Result<(u64, L), crate::MerkleTreeError> {
         let (index, latest_root) = self.tree.insert(storage, leaf, hasher)?;
-        let (max_history, cur_idx) = self.history_index.load(storage)?;
-        let next_idx = (cur_idx + 1) % max_history;
+        let cur_idx = self.history_index.may_load(storage)?.unwrap_or_default();
+        let next_idx = (cur_idx + 1) % HISTORY_LEVEL;
 
         // Remove old root
         if let Some(root) = self.root_index.may_load(storage, next_idx)? {
@@ -92,7 +91,7 @@ impl<
         self.root_index.save(storage, next_idx, &latest_root)?;
 
         // Update current index
-        self.history_index.save(storage, &(max_history, next_idx))?;
+        self.history_index.save(storage, &next_idx)?;
 
         Ok((index, latest_root))
     }
