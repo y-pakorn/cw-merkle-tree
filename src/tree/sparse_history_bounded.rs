@@ -45,7 +45,7 @@ impl<
     }
 
     /// Remove storage unused and out of range stored root.
-    /// The removed root might not be the most recent.
+    /// The removed root might not be the earliest.
     pub fn update_history_level(&self, storage: &mut dyn Storage) -> Result<(), MerkleTreeError> {
         let updated_idx = self.history_index.may_load(storage)?.unwrap_or_default() % HISTORY_LEVEL;
         self.history_index.save(storage, &updated_idx)?;
