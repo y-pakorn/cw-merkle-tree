@@ -6,6 +6,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{Hasher, MerkleTree, MerkleTreeError};
 
+/// Normal sparse merkle tree with customizable tree level and default leaf.
 pub struct SparseMerkleTree<
     'a,
     L: Serialize + DeserializeOwned + Clone + Debug + PartialEq,

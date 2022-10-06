@@ -8,6 +8,7 @@ use crate::{Hasher, MerkleTree, MerkleTreeError};
 
 use super::SparseMerkleTree;
 
+/// Like [SparseMerkleTree] but able to check valid root hash with previous root hashes upto specified history level.
 pub struct SparseMerkleTreeWithHistoryBounded<
     'a,
     L: Serialize + DeserializeOwned + Clone + Debug + PartialEq + PrimaryKey<'a>,
