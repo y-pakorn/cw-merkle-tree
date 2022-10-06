@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
-use cosmwasm_std::Empty;
-use cw_storage_plus::{Item, Map, PrimaryKey};
+use cosmwasm_std::{Empty, Order, Storage};
+use cw_storage_plus::{Bound, Item, Map, PrimaryKey};
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::{Hasher, MerkleTree};
+use crate::{Hasher, MerkleTree, MerkleTreeError};
 
 use super::SparseMerkleTree;
 
@@ -43,6 +43,30 @@ impl<
             tree: SparseMerkleTree::new(hashes_ns, leafs_ns, level_ns, zeros_ns),
         }
     }
+
+    /// Remove storage unused and out of range stored root.
+    /// The removed root might not be the most recent.
+    pub fn update_history_level(&self, storage: &mut dyn Storage) -> Result<(), MerkleTreeError> {
+        let updated_idx = self.history_index.may_load(storage)?.unwrap_or_default() % HISTORY_LEVEL;
+        self.history_index.save(storage, &updated_idx)?;
+
+        let mut root_range = self
+            .root_index
+            .range(
+                storage,
+                Some(Bound::inclusive(HISTORY_LEVEL)),
+                None,
+                Order::Ascending,
+            )
+            .collect::<Vec<_>>()
+            .into_iter();
+        while let Some(Ok((idx, root))) = root_range.next() {
+            self.root_index.remove(storage, idx);
+            self.root_history.remove(storage, root);
+        }
+
+        Ok(())
+    }
 }
 
 impl<
@@ -54,28 +78,24 @@ impl<
 {
     fn init(
         &self,
-        storage: &mut dyn cosmwasm_std::Storage,
+        storage: &mut dyn Storage,
         level: u8,
         default_leaf: L,
         hasher: &H,
-    ) -> Result<(), crate::MerkleTreeError> {
+    ) -> Result<(), MerkleTreeError> {
         self.tree.init(storage, level, default_leaf, hasher)
     }
 
-    fn is_valid_root(
-        &self,
-        storage: &dyn cosmwasm_std::Storage,
-        root: &L,
-    ) -> Result<bool, crate::MerkleTreeError> {
+    fn is_valid_root(&self, storage: &dyn Storage, root: &L) -> Result<bool, MerkleTreeError> {
         Ok(self.root_history.has(storage, root.clone()))
     }
 
     fn insert(
         &self,
-        storage: &mut dyn cosmwasm_std::Storage,
+        storage: &mut dyn Storage,
         leaf: L,
         hasher: &H,
-    ) -> Result<(u64, L), crate::MerkleTreeError> {
+    ) -> Result<(u64, L), MerkleTreeError> {
         let (index, latest_root) = self.tree.insert(storage, leaf, hasher)?;
         let cur_idx = self.history_index.may_load(storage)?.unwrap_or_default();
         let next_idx = (cur_idx + 1) % HISTORY_LEVEL;
@@ -96,10 +116,7 @@ impl<
         Ok((index, latest_root))
     }
 
-    fn get_latest_root(
-        &self,
-        storage: &dyn cosmwasm_std::Storage,
-    ) -> Result<L, crate::MerkleTreeError> {
+    fn get_latest_root(&self, storage: &dyn Storage) -> Result<L, MerkleTreeError> {
         self.tree.get_latest_root(storage)
     }
 }
