@@ -5,6 +5,7 @@ edition = "2021"
 description = "Sparse merkle tree with variants implementation for CosmWasm smart contract"
 repository = "https://github.com/y-pakorn/cw-merkle-tree"
 authors = ["yoisha <48324733+y-pakorn@users.noreply.github.com>"]
+license = "GPL-3.0-or-later"
 
 [dependencies]
 cosmwasm-std = "1.1.3"
