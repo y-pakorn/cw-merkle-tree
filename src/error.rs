@@ -18,9 +18,6 @@ pub enum MerkleTreeError {
 
 #[derive(Debug, Error)]
 pub enum HasherError {
-    #[error(transparent)]
-    Error(#[from] Box<dyn std::error::Error>),
-
     #[error("{0}")]
     Custom(String),
 }
