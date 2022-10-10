@@ -14,10 +14,10 @@ pub struct SparseMerkleTree<
 > {
     _l: PhantomData<L>,
     _h: PhantomData<H>,
-    pub hashes: Item<'a, Vec<L>>,
+    pub hashes: Item<'a, (Vec<L>, Vec<L>)>,
     pub leafs: Map<'a, u64, L>,
     pub level: Item<'a, u8>,
-    pub zeros: Item<'a, Vec<L>>,
+    pub root: Item<'a, L>,
 }
 
 impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<L>>
@@ -27,7 +27,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
         hashes_ns: &'a str,
         leafs_ns: &'a str,
         level_ns: &'a str,
-        zeros_ns: &'a str,
+        root_ns: &'a str,
     ) -> Self {
         Self {
             _l: PhantomData,
@@ -35,7 +35,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
             hashes: Item::new(hashes_ns),
             leafs: Map::new(leafs_ns),
             level: Item::new(level_ns),
-            zeros: Item::new(zeros_ns),
+            root: Item::new(root_ns),
         }
     }
 }
@@ -65,14 +65,13 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
             hashes.push(hasher.hash_two(latest, latest)?);
         }
 
-        self.hashes.save(storage, &hashes)?;
-        self.zeros.save(storage, &hashes)?;
+        self.hashes.save(storage, &(hashes.clone(), hashes))?;
 
         Ok(())
     }
 
     fn is_valid_root(&self, storage: &dyn Storage, root: &L) -> Result<bool, MerkleTreeError> {
-        Ok(self.hashes.load(storage)?.last().unwrap() == root)
+        Ok(self.root.may_load(storage)?.as_ref() == Some(root))
     }
 
     fn insert(
@@ -97,8 +96,7 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
 
         self.leafs.save(storage, index, &leaf)?;
 
-        let zeros = self.zeros.load(storage)?;
-        let mut hashes = self.hashes.load(storage)?;
+        let (mut hashes, zeros) = self.hashes.load(storage)?;
         let mut cur_hash = leaf;
         let mut cur_idx = index;
 
@@ -115,13 +113,17 @@ impl<'a, L: Serialize + DeserializeOwned + Clone + Debug + PartialEq, H: Hasher<
             cur_idx /= 2;
         }
 
-        self.hashes.save(storage, &hashes)?;
+        self.hashes.save(storage, &(hashes, zeros))?;
+        self.root.save(storage, &cur_hash)?;
 
-        Ok((index, hashes.into_iter().next_back().unwrap()))
+        Ok((index, cur_hash))
     }
 
     fn get_latest_root(&self, storage: &dyn Storage) -> Result<L, MerkleTreeError> {
-        Ok(self.hashes.load(storage)?.into_iter().next_back().unwrap())
+        Ok(self
+            .root
+            .may_load(storage)?
+            .unwrap_or(self.hashes.load(storage)?.1.last().unwrap().clone()))
     }
 }
 
@@ -178,7 +180,7 @@ mod tests {
         assert_eq!(
             new_root,
             Uint256::from_str(
-                "20440131195474697977177675138122460070080428738123630012135291638286263683716"
+                "65270348628983318905821145914244198139930176154042934882987463098115489862117"
             )?
         );
         assert_eq!(new_root, TREE.get_latest_root(&storage)?);
@@ -190,7 +192,7 @@ mod tests {
         assert_eq!(
             new_root,
             Uint256::from_str(
-                "17583439540779748128045581041758430207126949480967999715753965799367859941748"
+                "31390868241958093005646829964058364480768696680064791450319134920411060649604"
             )?
         );
         assert_eq!(new_root, TREE.get_latest_root(&storage)?);

@@ -32,7 +32,7 @@ impl<
         hashes_ns: &'a str,
         leafs_ns: &'a str,
         level_ns: &'a str,
-        zeros_ns: &'a str,
+        root_ns: &'a str,
         root_history_ns: &'a str,
         root_index_ns: &'a str,
         history_index_ns: &'a str,
@@ -41,7 +41,7 @@ impl<
             history_index: Item::new(history_index_ns),
             root_history: Map::new(root_history_ns),
             root_index: Map::new(root_index_ns),
-            tree: SparseMerkleTree::new(hashes_ns, leafs_ns, level_ns, zeros_ns),
+            tree: SparseMerkleTree::new(hashes_ns, leafs_ns, level_ns, root_ns),
         }
     }
 
@@ -191,8 +191,8 @@ mod tests {
         assert_eq!(
             new_root,
             [
-                45, 48, 180, 75, 130, 217, 36, 211, 56, 209, 169, 100, 90, 90, 130, 183, 22, 180,
-                158, 1, 50, 4, 40, 127, 94, 211, 229, 143, 202, 226, 138, 132
+                144, 77, 181, 73, 235, 223, 13, 204, 30, 18, 199, 252, 182, 160, 89, 248, 240, 219,
+                173, 150, 189, 114, 165, 70, 40, 159, 110, 9, 165, 185, 17, 229
             ]
         );
         assert_eq!(new_root, TREE.get_latest_root(&storage)?);
@@ -204,8 +204,8 @@ mod tests {
         assert_eq!(
             new_root,
             [
-                38, 223, 223, 196, 242, 242, 23, 6, 14, 235, 4, 249, 197, 168, 160, 77, 102, 150,
-                4, 52, 233, 58, 198, 244, 107, 32, 147, 134, 58, 154, 177, 116
+                69, 102, 154, 15, 149, 187, 157, 26, 123, 248, 50, 67, 177, 207, 6, 143, 94, 80,
+                242, 17, 127, 26, 94, 197, 222, 220, 255, 245, 136, 20, 62, 132
             ]
         );
         assert_eq!(new_root, TREE.get_latest_root(&storage)?);
