@@ -1,6 +1,6 @@
 [package]
 name = "cw-merkle-tree"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Sparse merkle tree with variants implementation for CosmWasm smart contract"
 repository = "https://github.com/y-pakorn/cw-merkle-tree"
